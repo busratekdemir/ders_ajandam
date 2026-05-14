@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'models/topic_model.dart';
 import 'services/api_service.dart';
 
+import 'services/local_storage_service.dart';
+
 void main() {
   runApp(const DersAjandamApp());
 }
@@ -1595,6 +1597,7 @@ class TopicTrackingPage extends StatefulWidget {
 
 class _TopicTrackingPageState extends State<TopicTrackingPage> {
   final ApiService apiService = ApiService();
+  final LocalStorageService localStorageService = LocalStorageService();
 
   List<TopicModel> topics = [];
   bool isLoading = true;
@@ -1621,7 +1624,18 @@ class _TopicTrackingPageState extends State<TopicTrackingPage> {
       final filteredTopics = fetchedTopics.where((topic) {
         return topic.grade == widget.grade && topic.lesson == widget.lesson;
       }).toList();
+      for (final topic in filteredTopics) {
+        final savedStatus = await localStorageService.getTopicStatus(
+          studentName: widget.studentName,
+          topicTitle: topic.title,
+        );
 
+        if (savedStatus != null) {
+
+          topic.done = savedStatus;
+        }
+      }
+      
       setState(() {
         topics = filteredTopics;
         isLoading = false;
@@ -1828,10 +1842,16 @@ class _TopicTrackingPageState extends State<TopicTrackingPage> {
                       formula: topic.formula,
                       isDone: topic.done,
                       color: getTopicColor(index),
-                      onTap: () {
+                      onTap: () async {
                         setState(() {
                           topics[index].done = !topics[index].done;
                         });
+                        
+                        await localStorageService.saveTopicStatus(
+                          studentName: widget.studentName,
+                          topicTitle: topics[index].title,
+                          isDone: topics[index].done,
+                        );
                       },
                     );
                   },
